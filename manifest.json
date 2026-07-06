@@ -1,0 +1,16 @@
+{
+  "name": "フビチェック",
+  "short_name": "フビチェック",
+  "description": "学会参加補助制度の申請書ミスをAIがチェック",
+  "lang": "ja",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#faf9f6",
+  "theme_color": "#4a6b57",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
