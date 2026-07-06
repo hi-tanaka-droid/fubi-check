@@ -1,22 +1,45 @@
 "use strict";
-// フビチェック Service Worker: ネットワーク優先+キャッシュ退避(オフラインでも起動できる)
-const CACHE = "fubicheck-v1";
+// フビチェック Service Worker
+// 方針: 同一オリジンGETはネットワーク優先+キャッシュ退避。
+//       初回にアプリシェルをプリキャッシュし、オフライン時のナビゲーションは index.html へフォールバック。
+const CACHE = "fubicheck-v2";
+const SHELL = ["./", "./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png", "./icon-180.png"];
 
-self.addEventListener("install", () => self.skipWaiting());
-self.addEventListener("activate", e => e.waitUntil(self.clients.claim()));
+self.addEventListener("install", e => {
+  e.waitUntil(
+    caches.open(CACHE)
+      .then(c => c.addAll(SHELL))
+      .catch(() => {})            // 一部取得失敗でもインストールは継続
+      .then(() => self.skipWaiting())
+  );
+});
+
+self.addEventListener("activate", e => {
+  e.waitUntil(
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
+  );
+});
 
 self.addEventListener("fetch", e => {
-  const url = new URL(e.request.url);
-  if (url.origin !== self.location.origin || e.request.method !== "GET") return;
+  const req = e.request;
+  const url = new URL(req.url);
+  if (url.origin !== self.location.origin || req.method !== "GET") return; // API等はSW非介入
   e.respondWith((async () => {
     const cache = await caches.open(CACHE);
     try {
-      const res = await fetch(e.request);
-      if (res.ok) cache.put(e.request, res.clone());
+      const res = await fetch(req);
+      if (res && res.ok) cache.put(req, res.clone());
       return res;
     } catch (_) {
-      const hit = await cache.match(e.request);
-      return hit || Response.error();
+      const hit = await cache.match(req);
+      if (hit) return hit;
+      // オフラインでの画面遷移は index.html / ルートへフォールバック(末尾スラッシュ揺れに対応)
+      if (req.mode === "navigate") {
+        return (await cache.match("./index.html")) || (await cache.match("./")) || Response.error();
+      }
+      return Response.error();
     }
   })());
 });
